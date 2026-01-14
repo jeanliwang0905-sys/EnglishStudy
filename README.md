@@ -1,4 +1,5 @@
 # English-Practice 
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -6,11 +7,11 @@
     <title>小學生英文單字酷學習</title>
     <style>
         :root {
-            --primary: #FFD700; /* 亮黃 */
-            --secondary: #87CEEB; /* 天空藍 */
-            --accent: #FF69B4; /* 粉紅 */
-            --vowel: #FF4136; /* 母音紅 */
-            --consonant: #0074D9; /* 子音藍 */
+            --primary: #FFD700;
+            --secondary: #87CEEB;
+            --accent: #FF69B4;
+            --vowel: #FF4136;
+            --consonant: #0074D9;
             --bg: #FFF9E6;
         }
 
@@ -22,7 +23,6 @@
             text-align: center;
         }
 
-        /* 控制面板 */
         .controls {
             background: white;
             padding: 15px;
@@ -40,9 +40,9 @@
             border-radius: 8px;
             border: 2px solid var(--secondary);
             font-size: 16px;
+            cursor: pointer;
         }
 
-        /* 標籤頁切換 */
         .tabs {
             display: flex;
             justify-content: center;
@@ -64,7 +64,6 @@
             border-bottom: 4px solid var(--accent);
         }
 
-        /* 內容區塊 */
         .content-card {
             background: white;
             max-width: 600px;
@@ -72,15 +71,15 @@
             padding: 30px;
             border-radius: 20px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            min-height: 300px;
+            min-height: 350px;
         }
 
-        /* 單字樣式 */
         .word-display {
             font-size: 48px;
             font-weight: bold;
             margin: 20px 0;
             letter-spacing: 2px;
+            min-height: 60px;
         }
 
         .vowel { color: var(--vowel); }
@@ -90,13 +89,13 @@
         .translation { font-size: 24px; color: #666; margin-bottom: 10px; }
         .example { font-size: 18px; color: #888; font-style: italic; }
 
-        /* 積木模式按鈕 */
         .block-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 10px;
             margin-top: 20px;
+            min-height: 60px;
         }
 
         .letter-btn {
@@ -108,11 +107,19 @@
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 4px 0 #b39700;
+            transition: 0.1s;
         }
 
-        .letter-btn:active { transform: translateY(4px); box-shadow: none; }
+        .letter-btn:disabled {
+            background: #eee;
+            box-shadow: none;
+            color: #ccc;
+            cursor: not-allowed;
+            transform: translateY(4px);
+        }
 
-        /* 聽寫模式輸入 */
+        .letter-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
+
         .dictation-input {
             font-size: 32px;
             width: 80%;
@@ -122,7 +129,12 @@
             padding: 10px;
         }
 
-        .hidden { display: none; }
+        #feedback {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 20px;
+            height: 30px;
+        }
     </style>
 </head>
 <body>
@@ -136,15 +148,14 @@
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('A')">模式 A: 學習</button>
-        <button class="tab-btn" onclick="switchTab('B')">模式 B: 積木</button>
-        <button class="tab-btn" onclick="switchTab('C')">模式 C: 聽寫</button>
+        <button class="tab-btn active" onclick="switchTab('A', this)">模式 A: 學習</button>
+        <button class="tab-btn" onclick="switchTab('B', this)">模式 B: 積木</button>
+        <button class="tab-btn" onclick="switchTab('C', this)">模式 C: 聽寫</button>
     </div>
 
     <div class="content-card">
-        <div id="displayArea">
-            </div>
-        <div id="feedback" style="margin-top: 20px; font-weight: bold; font-size: 20px;"></div>
+        <div id="displayArea"></div>
+        <div id="feedback"></div>
         <div style="margin-top: 30px;">
             <button onclick="prevWord()">⬅️ 上一個</button>
             <span id="progressIndicator">0 / 0</span>
@@ -153,8 +164,6 @@
     </div>
 
 <script>
-    // --- 資料區 ---
-    // 您可以將 Gemini 產生的單字表貼在這裡
     const rawData = [
         { word: "apple", syllable: "ap-ple", chinese: "蘋果", example: "I eat an apple every day." },
         { word: "banana", syllable: "ba-na-na", chinese: "香蕉", example: "The monkey likes bananas." },
@@ -173,9 +182,9 @@
     let currentIndex = 0;
     let currentTab = 'A';
     let showSyllable = false;
-    let userInput = ""; // 用於積木模式
+    let userInput = ""; 
+    let shuffledLetters = []; // 新增：儲存目前單字的亂序字母
 
-    // --- 初始化語音系統 ---
     const synth = window.speechSynthesis;
     const voiceSelect = document.getElementById('voiceSelect');
 
@@ -183,13 +192,13 @@
         const voices = synth.getVoices();
         voiceSelect.innerHTML = '';
         voices.forEach((voice, i) => {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `${voice.name} (${voice.lang})`;
-            if (voice.lang.includes('en-US') || voice.name.includes('Google US')) {
-                option.selected = true;
+            if (voice.lang.includes('en')) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.lang === 'en-US') option.selected = true;
+                voiceSelect.appendChild(option);
             }
-            voiceSelect.appendChild(option);
         });
     }
 
@@ -200,14 +209,13 @@
 
     function speakCurrentWord() {
         if (!currentLevelWords[currentIndex]) return;
+        synth.cancel(); // 停止之前的聲音
         const utterance = new SpeechSynthesisUtterance(currentLevelWords[currentIndex].word);
         const voices = synth.getVoices();
         utterance.voice = voices[voiceSelect.value];
-        utterance.rate = 0.9;
+        utterance.rate = 0.8;
         synth.speak(utterance);
     }
-
-    // --- 功能邏輯 ---
 
     function initGame() {
         const level = document.getElementById('levelSelect').value;
@@ -218,7 +226,19 @@
             currentLevelWords = rawData.slice(start, start + 10);
         }
         currentIndex = 0;
+        resetState();
         renderCurrentWord();
+    }
+
+    function resetState() {
+        userInput = "";
+        document.getElementById('feedback').textContent = "";
+        if (currentLevelWords[currentIndex]) {
+            // 初始化積木順序
+            shuffledLetters = currentLevelWords[currentIndex].word.split('')
+                .map((l, index) => ({ char: l, originalIndex: index, used: false }))
+                .sort(() => Math.random() - 0.5);
+        }
     }
 
     function createLevelOptions() {
@@ -236,12 +256,11 @@
         select.appendChild(allOpt);
     }
 
-    function switchTab(tab) {
+    function switchTab(tab, btn) {
         currentTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        userInput = "";
-        document.getElementById('feedback').textContent = "";
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        resetState();
         renderCurrentWord();
     }
 
@@ -268,7 +287,6 @@
         display.innerHTML = "";
 
         if (currentTab === 'A') {
-            // 模式 A: 學習
             const wordHTML = showSyllable ? 
                 wordData.syllable.split('-').map(s => colorizeWord(s)).join('<span class="syllable-divider">|</span>') : 
                 colorizeWord(wordData.word);
@@ -281,33 +299,31 @@
             `;
         } 
         else if (currentTab === 'B') {
-            // 模式 B: 積木
             display.innerHTML = `
                 <div class="translation">${wordData.chinese}</div>
-                <div class="word-display" style="min-height:60px">${userInput}</div>
+                <div class="word-display">${userInput}</div>
                 <div class="block-container" id="blockArea"></div>
-                <button onclick="userInput=''; renderCurrentWord();" style="margin-top:20px; background:#ffcccb">重來</button>
+                <div style="margin-top:20px">
+                    <button onclick="resetState(); renderCurrentWord();" style="background:#ffcccb">重來</button>
+                </div>
             `;
             
-            // 產生亂序字母
-            if (userInput === "") {
-                const letters = wordData.word.split('').sort(() => Math.random() - 0.5);
-                const blockArea = document.getElementById('blockArea');
-                letters.forEach(l => {
-                    const btn = document.createElement('button');
-                    btn.className = 'letter-btn';
-                    btn.textContent = l;
-                    btn.onclick = () => {
-                        userInput += l;
-                        checkBlockAnswer();
-                        renderCurrentWord();
-                    };
-                    blockArea.appendChild(btn);
-                });
-            }
+            const blockArea = document.getElementById('blockArea');
+            shuffledLetters.forEach((item, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'letter-btn';
+                btn.textContent = item.char;
+                btn.disabled = item.used;
+                btn.onclick = () => {
+                    userInput += item.char;
+                    item.used = true;
+                    renderCurrentWord();
+                    checkBlockAnswer();
+                };
+                blockArea.appendChild(btn);
+            });
         } 
         else if (currentTab === 'C') {
-            // 模式 C: 聽寫
             display.innerHTML = `
                 <div class="translation">${wordData.chinese}</div>
                 <div style="margin: 20px 0;">
@@ -327,12 +343,18 @@
 
     function checkBlockAnswer() {
         const target = currentLevelWords[currentIndex].word;
+        const feedback = document.getElementById('feedback');
         if (userInput.length === target.length) {
             if (userInput === target) {
-                document.getElementById('feedback').textContent = "🎨 太棒了！答對了！";
+                feedback.innerHTML = "<span style='color:green'>🎨 太棒了！答對了！</span>";
                 speakCurrentWord();
             } else {
-                document.getElementById('feedback').textContent = "❌ 再試一次喔！";
+                feedback.innerHTML = "<span style='color:red'>❌ 拼錯了，再試一次！</span>";
+                // 兩秒後自動重選，方便學生繼續練習
+                setTimeout(() => {
+                    resetState();
+                    renderCurrentWord();
+                }, 1500);
             }
         }
     }
@@ -340,19 +362,19 @@
     function checkDictation() {
         const val = document.getElementById('dInput').value.toLowerCase().trim();
         const target = currentLevelWords[currentIndex].word.toLowerCase();
+        const feedback = document.getElementById('feedback');
         if (val === target) {
-            document.getElementById('feedback').textContent = "🌟 答對了！你真棒！";
+            feedback.innerHTML = "<span style='color:green'>🌟 答對了！你真棒！</span>";
             speakCurrentWord();
         } else {
-            document.getElementById('feedback').textContent = "✍️ 拼錯囉，再檢查一下！";
+            feedback.innerHTML = "<span style='color:red'>✍️ 拼錯囉，再檢查一下！</span>";
         }
     }
 
     function nextWord() {
         if (currentIndex < currentLevelWords.length - 1) {
             currentIndex++;
-            userInput = "";
-            document.getElementById('feedback').textContent = "";
+            resetState();
             renderCurrentWord();
         }
     }
@@ -360,13 +382,11 @@
     function prevWord() {
         if (currentIndex > 0) {
             currentIndex--;
-            userInput = "";
-            document.getElementById('feedback').textContent = "";
+            resetState();
             renderCurrentWord();
         }
     }
 
-    // 初始化
     createLevelOptions();
     initGame();
 </script>
